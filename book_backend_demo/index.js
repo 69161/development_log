@@ -4,12 +4,17 @@ const express = require('express');
 // 引入 body validationResult 验证中间件
 const { body, validationResult } = require('express-validator');
 
+// 引入 BookReposition 模块
+const BookReposition = require('./book_reposition')
+
 // 初始化数据，模拟 books
 const books = [
   {id:1, name:'JavaScript权威指南', author:'阮一峰', price:88.8},
   {id:2, name:'Python编程从入门到实践', author:'任建军', price:99.9},
   {id:3, name:'Java从入门到精通', author:'李刚', price:129.9}
 ]
+// 实例化 BookReposition 类
+const bookReposition = new BookReposition(books);
 
 // 书籍验证规则
 const bookValidationRules = [
@@ -32,7 +37,8 @@ app.get('/', (req,res) => {
 });
 
 // 路由：获取所有书籍
-app.get('/books', (req,res) => {
+app.get('/books', async(req,res) => {
+  const books = await bookReposition.findAll();
   res.status(200).json({
     success: true,
     count: books.length,
@@ -41,23 +47,20 @@ app.get('/books', (req,res) => {
 });
 
 // 路由：获取单个书籍
-app.get('/books/:id',  (req,res) => {
-  const book = books.find(book => book.id === parseInt(req.params.id));
+app.get('/books/:id',  async(req,res,next) => {
+  const book = await bookReposition.findById(parseInt(req.params.id));
   if(book) {
     res.status(200).json({
       success: true,
       data: book
     })
   } else {
-    res.status(404).json({
-      success: false,
-      message: '书籍不存在'
-    })
+    return next(new Error('书籍不存在'))
   }
 });
 
 // 路由：创建书籍
-app.post('/books', bookValidationRules, (req,res) => {
+app.post('/books', bookValidationRules, async(req,res) => {
   const errors = validationResult(req);
   if(!errors.isEmpty()) {
     return res.status(400).json({
@@ -66,19 +69,15 @@ app.post('/books', bookValidationRules, (req,res) => {
     })
   }
   const newBook = {
-    id: books.length + 1,
     name: req.body.name,
     author: req.body.author,
     price: req.body.price
   };
-  books.push(newBook);
-  res.status(201).json({
-    success: true,
-    data: newBook
-  })
+  const book = await bookReposition.create(newBook);
+  res.status(201).json(book)
 })
 // 路由：更新书籍
-app.put('/books/:id', bookValidationRules, (req,res) => {
+app.put('/books/:id', bookValidationRules,async(req,res) => {
   const errors = validationResult(req);
   if(!errors.isEmpty()) {
     return res.status(400).json({
@@ -86,15 +85,9 @@ app.put('/books/:id', bookValidationRules, (req,res) => {
       errors: errors.array()
     })
   }
-  const book = books.find(book => book.id === parseInt(req.params.id));
+  const book = await bookReposition.update(parseInt(req.params.id), req.body);
   if(book) {
-    book.name = req.body.name;
-    book.author = req.body.author;
-    book.price = req.body.price;
-    res.status(200).json({
-      success: true,
-      data: book
-    })
+    res.status(200).json(book)
   } else {
     res.status(404).json({
       success: false,
@@ -103,21 +96,35 @@ app.put('/books/:id', bookValidationRules, (req,res) => {
   }
 })
 // 路由：删除书籍
-app.delete('/books/:id', (req,res) => {
-  const bookIndex = books.findIndex(book => book.id === parseInt(req.params.id));
-  if(bookIndex !== -1) {
-    books.splice(bookIndex, 1);
-    res.status(200).json({
-      success: true,
-      message: '删除成功'
-    })
-  } else {
+app.delete('/books/:id', async(req,res) => {
+  const book = await bookReposition.delete(parseInt(req.params.id));
+  if(!book) {
     res.status(404).json({
       success: false,
       message: '书籍不存在'
     })
-  }
+  } 
+  res.status(200).json({
+    success: true,
+    message: '删除成功'
+  })
 })
+
+app.use((req,res,next) => {
+  res.status(404).json({
+    success: false,
+    message: '资源不存在'
+  })
+})
+// 错误处理中间件
+app.use((err,req,res,next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    success: false,
+    message: '服务器内部错误'
+  })
+})
+
 
 // 端口
 const port = 3000;

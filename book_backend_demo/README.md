@@ -169,5 +169,99 @@ app.delete('/books/:id',(req,res) => {
 })
 ```
 
+##### 五、数据持久化（内存数组）
+
+```js
+// book_reposition.js
+class BookReposition  {
+  constructor(books) {
+    this.books = books;
+    this.bookId = books.length+1;
+  }
+  // findAll 读取全部
+  async findAll() {
+    return [...this.books];  // 返回数组副本
+  }
+  // findById 读取单个
+  async findById(id) {
+    return this.books.find(book => book.id === id)
+  }
+  // 新增书籍
+  async create(book) {
+    const newBook = {
+      id: this.bookId++,
+      ...book,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.books.push(newBook)
+  }
+  // 更新书籍
+  async update(id,updateBook) {
+    const index = this.book.findIndex(book => books.id === id)
+    if(index === -1) {
+      throw new Error('书籍没有找到')
+    }
+    const book = {
+      ...this.books[index],
+      ...updateBook
+    }
+    this.books[index] = book
+    return book
+  }
+  // 删除书籍
+  async delete(id) {
+    const index = this.book.findIndex(book => books.id === id)
+    if(index === -1) {
+      throw new Error('书籍没有找到')
+    }
+    return this.books.splice(index,1)[0];
+  }
+}
+module.exports = BookReposition;
+```
+
+修改`index.js`
+
+```js
+const BookReposition = require('./book_reposition')
+
+const bookReposition = new BookReposition(books)
+
+app.get('/books', async(req,res) => {
+  const books = await bookReposition.findAll();
+  ...
+})
+app.get('/books/:id', async(req, res, next) => {
+  const book = await bookReposition.findById(parseInt(req.params.id))
+  ...
+})
+app.post('/books',bookValidationRules,async(req,res) => {
+  ...
+  const book = await bookReposition.create(newBook)
+  ...
+})
+app.put('/books/:id',bookValidationRules,async(req,res) => {
+  ...
+  const book = await bookResposition.update(parseInt(req.params.id),req.body)
+  ...
+})
+app.delete('/books/:id', async(req,res) => {
+  const book = await bookReposition.delete(parseInt(req.params.id))
+})
+```
+
+错误处理中间件
+
+```js
+app.use((err,req,res,next) => {
+  conse.error(err.stack)
+  res.status(500).json({
+    success: false,
+    message: "服务器内部错误"
+  })
+})
+```
+
 
 
