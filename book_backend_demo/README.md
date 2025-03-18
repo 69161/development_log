@@ -40,7 +40,7 @@ npm install express-validator nodemon
 
   `validationResult(req)`获取校验结果，`errors.array()`格式化错误信息
 
-#### 一、初始化 模拟数据
+##### 一、初始化 模拟数据  并GET获取
 
 ```js
 // index.js
@@ -72,4 +72,102 @@ app.get('/books/:id',(req,res) => {
 })
 
 ```
+
+##### 二、创建书籍
+
+```js
+app.post('/books',(req,res) => {
+  const book = req.body;
+  book.id = books.length + 1;
+  books.push(book);
+  res.status(201).json({
+		success: true,
+    data: book
+  })
+})
+```
+
+所有的请求都能提交，如何保证数据安全；
+
+```js
+const { body, validationResult} = require('express-validator')
+// 验证规则
+const bookValidationRules = [
+  body('name').notEmpty().withMessage('书名不能为空'),
+  body('author').notEmpty().withMessage('作者不能为空'),
+  body('price').isFloat({min:0}).withMessage('价格必须为正数')
+]
+// 修改post请求
+app.post('/books',bookValidationRules, (req,res) => {
+  const errors = validationResult(req);
+  if(!errors.isEmpty()) { 
+    return res.status(400).json({
+      success: false,
+      errors: errors.array()
+    })
+  }
+  const newBook = {
+    id: books.length+1,
+    name:req.body.name,
+    author:req.body.author,
+    price:req.body.price
+  };
+  book.push(newBook);
+  res.status(201).json({
+    success: true,
+    data: newBook
+  })
+})
+```
+
+##### 三、更新书籍
+
+```js
+app.put('/books/:id', bookValidationRules, (req,res) => {
+  const errors = validationResult(req);
+  if(!errors.isEmpt()) {
+		return res.status(400).json({
+      success: false,
+      errors: errors.array()
+    })
+  };
+  const book = books.find(book => book.id === parseInt(req.params.id));
+  if(book) {
+    book.name = req.body.name;
+    book.author = req.body.author;
+    book.price = req.body.price;
+    res.status(200).json({
+      success: true,
+      data: book
+    })
+  } else {
+    res.status(404).json({
+      success: false,
+      message:'书籍不存在'
+    })
+  }
+})
+```
+
+##### 四、删除书籍
+
+```js
+app.delete('/books/:id',(req,res) => {
+  const bookIndex = book.findIndex(book => book.id === parseInt(req.params.id));
+  if(bookIndex !== -1) {
+    books.splice(bookIndex,1)
+    res.status(200).json({
+      success: true,
+      message: '删除成功'
+    })
+  } else {
+    res.status(404).json({
+			success: false,
+      message: '书籍不存在'
+		})
+  }
+})
+```
+
+
 
